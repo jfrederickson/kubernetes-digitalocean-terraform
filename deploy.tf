@@ -12,6 +12,7 @@
 ###############################################################################
 
 
+# just set LINODE_TOKEN in the environment
 variable "linode_token" {}
 
 variable "linode_region" {
@@ -105,6 +106,7 @@ resource "linode_instance" "k8s_master" {
       "sudo -E /tmp/install-kubeadm.sh",
       "export MASTER_PRIVATE_IP=\"${self.private_ip_address}\"",
       "export MASTER_PUBLIC_IP=\"${self.ip_address}\"",
+      "export MASTER_LABEL=\"${self.label}\"",
       "chmod +x /tmp/00-master.sh",
       "sudo -E /tmp/00-master.sh"
     ]
@@ -169,6 +171,7 @@ resource "linode_instance" "k8s_worker" {
       "chmod +x /tmp/install-kubeadm.sh",
       "sudo -E /tmp/install-kubeadm.sh",
       "export NODE_PRIVATE_IP=\"${self.private_ip_address}\"",
+      "export NODE_LABEL=\"${self.label}\"",
       "chmod +x /tmp/01-worker.sh",
       "sudo -E /tmp/01-worker.sh"
     ]
@@ -210,4 +213,8 @@ resource "null_resource" "deploy_linode_cloud_controller_manager" {
             kubectl create -f https://raw.githubusercontent.com/pharmer/cloud-controller-manager/master/hack/deploy/linode.yaml
 EOF
   }
+}
+
+output "cmd" {
+  value = "ssh core@${linode_instance.k8s_master.ip_address} /opt/bin/kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes"
 }
