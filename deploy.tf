@@ -25,7 +25,7 @@ variable "ssh_public_key" {
 }
 
 variable "number_of_workers" {
-  default = "3"
+  default = "1"
 }
 
 variable "k8s_version" {
@@ -48,6 +48,11 @@ variable "type_worker" {
   default = "g6-standard-2"
 }
 
+resource "random_string" "password" {
+  length           = 16
+  special          = true
+  override_special = "/@\" "
+}
 
 ###############################################################################
 #
@@ -70,33 +75,25 @@ provider "linode" {
 
 resource "linode_instance" "k8s_master" {
   image = "linode/containerlinux"
-  kernel = "linode/direct-disk"
   label = "${var.prefix}k8s-master"
   region = "${var.linode_region}"
-  private_networking = true
+  private_ip = true
   type = "${var.type_master}"
-  ssh_key = "${chomp(file("~/.ssh/id_rsa_terraform.pub"))}"
+  authorized_keys = ["${chomp(file("~/.ssh/id_rsa.pub"))}"]
   // FIXME
-  root_password = ""
+  root_pass = "${random_string.password.result}"
+  swap_size = 0
 
   provisioner "file" {
     source = "./00-master.sh"
     destination = "/tmp/00-master.sh"
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   provisioner "file" {
     source = "./install-kubeadm.sh"
     destination = "/tmp/install-kubeadm.sh"
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   # Install dependencies and set up cluster
@@ -111,11 +108,7 @@ resource "linode_instance" "k8s_master" {
       "chmod +x /tmp/00-master.sh",
       "sudo -E /tmp/00-master.sh"
     ]
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   # copy secrets to local
@@ -138,46 +131,34 @@ EOF
 resource "linode_instance" "k8s_worker" {
   count = "${var.number_of_workers}"
   image = "linode/containerlinux"
-  kernel = "linode/direct-disk"
   label = "${var.prefix}${format("k8s-worker-%02d", count.index + 1)}"
   region = "${var.linode_region}"
   type = "${var.type_worker}"
-  private_networking = true
+  swap_size = 0
+  private_ip = true
   # user_data = "${data.template_file.worker_yaml.rendered}"
-  ssh_key = "${chomp(file("~/.ssh/id_rsa_terraform.pub"))}"
+  authorized_keys = ["${chomp(file("~/.ssh/id_rsa.pub"))}"]
   depends_on = ["linode_instance.k8s_master"]
   // FIXME
-  root_password = ""
+  root_pass = "${random_string.password.result}"
 
   # Start kubelet
   provisioner "file" {
     source = "./01-worker.sh"
     destination = "/tmp/01-worker.sh"
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   provisioner "file" {
     source = "./install-kubeadm.sh"
     destination = "/tmp/install-kubeadm.sh"
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   provisioner "file" {
     source = "./secrets/kubeadm_join"
     destination = "/tmp/kubeadm_join"
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   # Install dependencies and join cluster
@@ -191,11 +172,7 @@ resource "linode_instance" "k8s_worker" {
       "chmod +x /tmp/01-worker.sh",
       "sudo -E /tmp/01-worker.sh"
     ]
-    connection {
-      type = "ssh",
-      user = "core",
-      private_key = "${file(var.ssh_private_key)}"
-    }
+    connection { user = "core" }
   }
 
   provisioner "local-exec" {
