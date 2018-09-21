@@ -2,7 +2,7 @@
 # Usage:
 #	. ./setup_terraform.sh
 
-export TF_VAR_do_token=$(cat ./secrets/DO_TOKEN)
+export TF_VAR_linode_token=$(cat ./secrets/LINODE_TOKEN)
 
 function get_ssh_version {
     # ssh -V prints to stderr, redirect

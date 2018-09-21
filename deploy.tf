@@ -207,7 +207,7 @@ resource "null_resource" "deploy_linode_cloud_controller_manager" {
   provisioner "local-exec" {
     command = <<EOF
             export KUBECONFIG=${path.module}/secrets/admin.conf
-            sed -e "s/\$LINODE_ACCESS_TOKEN/${var.linode_token}/" < ${path.module}/03-linode-secret.yaml > ./secrets/03-linode-secret.rendered.yaml
+            sed -e "s/\$LINODE_TOKEN/${var.linode_token}/" < ${path.module}/03-linode-secret.yaml > ./secrets/03-linode-secret.rendered.yaml
             until kubectl get pods 2>/dev/null; do printf '.'; sleep 5; done
             kubectl create -f ./secrets/03-linode-secret.rendered.yaml
             kubectl create -f https://raw.githubusercontent.com/pharmer/cloud-controller-manager/master/hack/deploy/linode.yaml
@@ -216,5 +216,9 @@ EOF
 }
 
 output "cmd" {
+  value = "KUBECONFIG=secrets/admin.conf kubectl get nodes"
+}
+
+output "remote_cmd" {
   value = "ssh core@${linode_instance.k8s_master.ip_address} /opt/bin/kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes"
 }
