@@ -182,8 +182,8 @@ resource "linode_instance" "k8s_worker" {
     when = "destroy"
     command = <<EOF
 export KUBECONFIG=${path.module}/secrets/admin.conf
-kubectl drain --delete-local-data --force --ignore-daemonsets ${self.name}
-kubectl delete nodes/${self.name}
+kubectl drain --delete-local-data --force --ignore-daemonsets ${self.label}
+kubectl delete nodes/${self.label}
 EOF
   }
 }
